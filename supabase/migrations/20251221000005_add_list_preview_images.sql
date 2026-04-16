@@ -41,15 +41,5 @@ AFTER INSERT OR UPDATE OR DELETE ON public.lists_products
 FOR EACH ROW
 EXECUTE FUNCTION public.update_list_preview_images();
 
--- Backfill existing data
-UPDATE public.lists l
-SET preview_images = ARRAY(
-    SELECT cf.secure_url
-    FROM public.lists_products lp
-    JOIN public.products p ON lp.product_id = p.id
-    JOIN public.cloud_files cf ON p.thumbnail_id = cf.id
-    WHERE lp.list_id = l.id
-    AND p.thumbnail_id IS NOT NULL
-    ORDER BY lp.created_at DESC
-    LIMIT 4
-);
+-- Legacy Hybrid backfill archived in ../legacy_hybrid/20251221000005_add_list_preview_images.backfill.sql.
+-- New backend bootstraps should not replay historical data backfills from the active migration chain.

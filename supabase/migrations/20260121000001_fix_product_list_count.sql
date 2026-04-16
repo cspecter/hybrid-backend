@@ -121,10 +121,5 @@ AFTER INSERT OR DELETE ON public.product_brands
 FOR EACH ROW
 EXECUTE FUNCTION public.update_product_brand_count();
 
--- Recalculate all counts for all products
-UPDATE public.products p
-SET 
-    list_count = (SELECT COUNT(*) FROM public.lists_products lp WHERE lp.product_id = p.id),
-    stash_count = (SELECT COUNT(*) FROM public.stash s WHERE s.product_id = p.id),
-    post_count = (SELECT COUNT(*) FROM public.posts_products pp WHERE pp.product_id = p.id),
-    brand_count = (SELECT COUNT(*) FROM public.product_brands pb WHERE pb.product_id = p.id);
+-- Legacy Hybrid repair backfill archived in ../legacy_hybrid/20260121000001_fix_product_list_count.backfill.sql.
+-- New backend bootstraps should not replay historical count repairs from the active migration chain.

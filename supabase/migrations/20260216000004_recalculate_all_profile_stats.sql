@@ -122,5 +122,5 @@ BEGIN
 END;
 $$;
 
--- Run once on migration apply to repair existing data.
-SELECT public.recalculate_all_profile_stats();
+-- Legacy Hybrid repair apply-step archived in ../legacy_hybrid/20260216000004_recalculate_all_profile_stats.apply.sql.
+-- Keep the utility functions active, but do not run full-table repairs during shared backend bootstrap.

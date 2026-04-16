@@ -1,0 +1,4 @@
+-- Shared seed entrypoint for every backend.
+-- Keep this file safe to run for all brands.
+-- Brand-specific seed data lives under ../brands/<brand>/seed.sql and is applied
+-- by scripts/brands/seed.sh after the shared schema has been loaded.

@@ -26,13 +26,8 @@ BEGIN
 END;
 $$;
 
--- Recalculate counts to correct any bad existing values
-UPDATE public.lists l
-SET product_count = (
-    SELECT COUNT(*)
-    FROM public.lists_products lp
-    WHERE lp.list_id = l.id
-);
+-- Legacy Hybrid repair backfill archived in ../legacy_hybrid/20260105000001_fix_list_product_count_negative.backfill.sql.
+-- New backend bootstraps should not replay historical data repairs from the active migration chain.
 
 -- Prevent negative counts at the DB layer
 DO $$

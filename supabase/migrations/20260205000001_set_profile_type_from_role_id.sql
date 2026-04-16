@@ -22,10 +22,5 @@ CREATE TRIGGER trg_set_profile_type_from_role_id
     BEFORE INSERT OR UPDATE OF role_id ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION public.fn_set_profile_type_from_role_id();
 
--- Backfill existing profiles
-UPDATE public.profiles
-SET profile_type = CASE 
-    WHEN role_id = 10 THEN 'brand'::public.profile_type 
-    ELSE 'individual'::public.profile_type 
-END;
-
+-- Legacy Hybrid backfill archived in ../legacy_hybrid/20260205000001_set_profile_type_from_role_id.backfill.sql.
+-- New backend bootstraps should not replay historical data backfills from the active migration chain.
