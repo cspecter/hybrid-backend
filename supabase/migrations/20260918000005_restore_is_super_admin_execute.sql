@@ -1,0 +1,35 @@
+-- REGRESSION FIX for 20260918000003.
+--
+-- That migration revoked EXECUTE on every SECURITY DEFINER function in public from
+-- PUBLIC, anon and authenticated. is_super_admin() should not have been in scope.
+--
+-- RLS policy expressions are evaluated as the CALLING role, not as the policy or
+-- table owner. Two policies call is_super_admin() directly, so once authenticated
+-- lost EXECUTE, any statement that had to evaluate them raised
+--   ERROR 42501: permission denied for function is_super_admin
+-- rather than simply returning no rows.
+--
+-- Observed impact, measured as an authenticated non-admin user:
+--   UPDATE public.profiles      -- FAILED, including a user editing their OWN row,
+--                                  which is the app's profile-edit path
+--   SELECT public.super_admins  -- FAILED
+--   SELECT public.profiles      -- still worked, but only incidentally: the open
+--                                  `USING (true)` SELECT policy satisfied the OR
+--                                  before the broken one was reached. Permissive
+--                                  policy evaluation order is not guaranteed, so
+--                                  that was luck, not safety.
+--
+-- A full sweep of pg_policies, check constraints, column defaults and index
+-- expressions found exactly these two objects referencing a function that anon or
+-- authenticated can no longer execute. Nothing else in the database depends on the
+-- revoked set.
+--
+-- is_super_admin() is safe to expose: it takes no arguments, is STABLE and
+-- read-only, has search_path pinned, and derives identity entirely from auth.uid()
+-- -- it returns false for anon rather than leaking anything. It was classified SAFE
+-- in the audit; the error was revoking it anyway as part of a blanket sweep.
+--
+-- Granted to authenticated only. Both dependent policies are TO authenticated, and
+-- policies are filtered by role before evaluation, so anon never evaluates them and
+-- does not need the grant. PUBLIC stays revoked.
+GRANT EXECUTE ON FUNCTION public.is_super_admin() TO authenticated;
