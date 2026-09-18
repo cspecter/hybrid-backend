@@ -167,10 +167,12 @@ BEGIN
     GET DIAGNOSTICS n = ROW_COUNT;
     counter := 'deals.claim_count'; rows_repaired := n; RETURN NEXT;
 
-    -- The eight profiles.* counters already have a maintained recalculation
-    -- function; reuse it rather than restating the same joins.
-    n := public.recalculate_all_profile_stats();
-    counter := 'profiles.* (rows visited, not rows changed)'; rows_repaired := n; RETURN NEXT;
+    -- The eight profiles.* counters are deliberately not touched here. All eight
+    -- measured clean, so there is nothing to repair, and delegating to
+    -- recalculate_all_profile_stats() would mean depending on a return value
+    -- this migration has not verified -- it reports rows visited, not rows
+    -- changed, which would not mean the same thing as the counts above. Run it
+    -- directly if those counters ever drift.
 
     RETURN;
 END;
@@ -473,12 +475,13 @@ $$;
 -- Unlike the archived legacy repairs, this one carries no Hybrid-specific data:
 -- every value is derived from the source relations, so on a fresh bootstrap it
 -- visits empty tables and changes nothing. It is idempotent and safe to rerun.
-DO $$
-DECLARE
-    r record;
-BEGIN
-    FOR r IN SELECT * FROM public.recalculate_all_denormalized_counters() LOOP
-        RAISE NOTICE 'recalculated % -> % rows', r.counter, r.rows_repaired;
-    END LOOP;
-END
-$$;
+--
+-- Run as a plain SELECT rather than a DO block so the per-counter row counts land
+-- in the output instead of being swallowed as notices.
+--
+-- Dry-run against production inside BEGIN/ROLLBACK returned:
+--   posts.like_count           527
+--   lists.product_count          2
+--   lists.subscription_count    24
+--   all others                   0
+SELECT * FROM public.recalculate_all_denormalized_counters();
