@@ -95,7 +95,9 @@ begin
       'certifications', jsonb_build_array()),
     -- Licences deliberately empty, as asked.
     '[]'::jsonb,
-    1, 2, true, true,
+    -- A real shopfront photo. cloud_files 1 and 2 are stashlist placeholder art,
+    -- which is what the badge was drawing before. See 20260921000015.
+    259554, 259554, true, true,
     'A test storefront at Rockefeller Center. Everything here is fake.', 21)
   on conflict (slug) do update set name = excluded.name
   returning id into loc_id;
