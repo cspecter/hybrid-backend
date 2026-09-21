@@ -115,7 +115,9 @@ export const GIVEAWAY_LOOKBACK_DAYS = 14;
 export const DROP_LOOKAHEAD_DAYS = 30;
 export const DROP_LOOKBACK_DAYS = 14;
 export const NEW_LOCATION_DAYS = 90;
-export const TRENDING_LIST_DAYS = 30;
+// No constant for trending stashlists: they are ranked by total subscribers,
+// because nothing records when a subscription happened, so there is no window to
+// set. See the note in outreach_digest_consumer.
 /** Window for a creator's or brand's own numbers. */
 export const STATS_WINDOW_DAYS = 30;
 /** Most items of any one kind in a digest. */

@@ -16,7 +16,7 @@ import {
   GIVEAWAY_LOOKAHEAD_DAYS, GIVEAWAY_LOOKBACK_DAYS, MAX_ITEMS_PER_SECTION,
   MAX_SENDS_PER_TICK, MAX_SENDS_WITHOUT_ENGAGEMENT, MODE, NEW_LOCATION_DAYS,
   NUDGE_INTERVAL_DAYS, SEQUENCE_INTERVAL_DAYS, SEQUENCE_LENGTH, STATS_WINDOW_DAYS,
-  TEST_RECIPIENTS, TRENDING_LIST_DAYS,
+  TEST_RECIPIENTS,
 } from "../_shared/outreach/config.ts";
 import {
   composeDigest, composeNudge, composeTip, composeWelcome, NotComposable,
@@ -38,7 +38,6 @@ const WINDOWS = {
   newLocationDays: NEW_LOCATION_DAYS,
   statsWindow: STATS_WINDOW_DAYS,
   maxItems: MAX_ITEMS_PER_SECTION,
-  trendingDays: TRENDING_LIST_DAYS,
 };
 
 type Step =
