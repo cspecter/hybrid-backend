@@ -110,6 +110,24 @@ export const dueContacts = async (limit: number): Promise<Contact[]> => {
   return (data ?? []) as Contact[];
 };
 
+/**
+ * Active contacts of one segment, regardless of whether they are due.
+ *
+ * Only for the dry-run preview. The scheduler must never use this: it would mail
+ * people ahead of their cadence.
+ */
+export const activeContactsInSegment = async (segment: Segment, limit: number): Promise<Contact[]> => {
+  const { data, error } = await supabaseAdmin
+    .from("outreach_contacts")
+    .select("*")
+    .eq("status", "active")
+    .eq("segment", segment)
+    .order("id", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`activeContactsInSegment: ${error.message}`);
+  return (data ?? []) as Contact[];
+};
+
 export const contactByEmail = async (email: string): Promise<Contact | null> => {
   const { data } = await supabaseAdmin
     .from("outreach_contacts").select("*").eq("email", email.trim().toLowerCase()).maybeSingle();

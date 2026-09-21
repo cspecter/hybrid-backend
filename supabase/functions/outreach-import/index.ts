@@ -11,7 +11,18 @@
  * against the suppression list, and the response reports every rejection with its
  * line number and reason.
  *
- * Add ?dry_run=1 to validate without writing.
+ * Query parameters:
+ *   dry_run=1          validate and report, write nothing
+ *   default_segment=   target type for rows that do not name one themselves
+ *   default_source=    source for rows that do not name one themselves
+ *
+ * A default fills a blank; it never overrides a value the file states. So a file
+ * of dispensaries needs no segment column at all, and a mixed file still works.
+ *
+ * There is deliberately no default for consent_basis. It is the one field that
+ * carries legal weight per person, and a form-level default would let one click
+ * assert a basis for a whole file nobody had checked. A row without one is
+ * rejected, as before.
  *
  * Columns (header row required, case-insensitive, order-free):
  *   email*         the address
@@ -24,6 +35,7 @@
  */
 
 import { errorResponse, handleCors, jsonResponse } from "../_shared/cors.ts";
+import { requireAdminCaller } from "../_shared/outreach/auth.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
 import { SEGMENTS } from "../_shared/outreach/config.ts";
 
@@ -73,10 +85,23 @@ const readBody = async (req: Request): Promise<string> => {
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);
   if (cors) return cors;
+
+  // verify_jwt lets the public anon key through; this is the real gate.
+  const gate = await requireAdminCaller(req);
+  if ("refuse" in gate) return gate.refuse;
   if (req.method !== "POST") return errorResponse("POST a CSV body", 405);
 
   try {
-    const dryRun = new URL(req.url).searchParams.get("dry_run") === "1";
+    const params = new URL(req.url).searchParams;
+    const dryRun = params.get("dry_run") === "1";
+
+    const defaultSegment = (params.get("default_segment") ?? "").trim().toLowerCase();
+    if (defaultSegment && !SEGMENTS.includes(defaultSegment as never)) {
+      return errorResponse(
+        `default_segment must be one of ${SEGMENTS.join(", ")} (got "${defaultSegment}")`, 400,
+      );
+    }
+    const defaultSource = (params.get("default_source") ?? "").trim();
     const text = await readBody(req);
     const rows = parseCsv(text);
     if (rows.length < 2) return errorResponse("CSV has no data rows", 400);
@@ -87,9 +112,10 @@ Deno.serve(async (req: Request) => {
     const iSegment = col("segment");
     const iConsent = col("consent_basis");
 
+    // segment is only required in the file when no default was chosen.
     const missingColumns = [
       iEmail < 0 ? "email" : null,
-      iSegment < 0 ? "segment" : null,
+      iSegment < 0 && !defaultSegment ? "segment (or choose a target type)" : null,
       iConsent < 0 ? "consent_basis" : null,
     ].filter(Boolean);
     if (missingColumns.length > 0) {
@@ -111,7 +137,7 @@ Deno.serve(async (req: Request) => {
       const get = (i: number) => (i >= 0 && i < cells.length ? cells[i].trim() : "");
 
       const email = get(iEmail).toLowerCase();
-      const segment = get(iSegment).toLowerCase();
+      const segment = get(iSegment).toLowerCase() || defaultSegment;
       const consent = get(iConsent);
 
       if (!email) { rejected.push({ line, email: "", reason: "no email" }); continue; }
@@ -137,7 +163,8 @@ Deno.serve(async (req: Request) => {
       seenInFile.add(email);
       accepted.push({
         email, name: get(iName) || null, segment, consent_basis: consent,
-        profile_id: profileId, source: get(iSource) || null, notes: get(iNotes) || null,
+        profile_id: profileId, source: get(iSource) || defaultSource || null,
+        notes: get(iNotes) || null,
         _line: line,
       });
     }
@@ -195,6 +222,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({
       ok: true,
       dry_run: dryRun,
+      default_segment: defaultSegment || null,
       rows_in_file: rows.length - 1,
       accepted: toInsert.length,
       inserted,

@@ -185,18 +185,28 @@ matter; names are case-insensitive.
 | Column | Required | Notes |
 | --- | --- | --- |
 | `email` | yes | |
-| `segment` | yes | `consumer`, `creator`, `brand` or `dispensary` |
+| `segment` | yes* | `consumer`, `creator`, `brand` or `dispensary`. *Not needed if you choose a target type on import. |
 | `consent_basis` | **yes** | Why we may email them, in words. A row without one is rejected. |
 | `name` | no | |
 | `profile_id` | no | Numeric `profiles.id` if they already have an account |
 | `source` | no | Where the list came from |
 | `notes` | no | |
 
+Easiest from the app: **Admin Dashboard → Email Agent → Import contacts**. Pick
+the file, pick a target type, **Check file** to validate, **Import** to write.
+
+By `curl`:
+
 ```bash
-curl -X POST "https://ujmisqstpmowanvivtcr.supabase.co/functions/v1/outreach-import?dry_run=1" -H "Authorization: Bearer $SERVICE_ROLE_KEY" -H "Content-Type: text/csv" --data-binary @contacts.csv
+curl -X POST "https://ujmisqstpmowanvivtcr.supabase.co/functions/v1/outreach-import?dry_run=1&default_segment=dispensary" -H "Authorization: Bearer $SERVICE_ROLE_KEY" -H "Content-Type: text/csv" --data-binary @contacts.csv
 ```
 
-Drop `?dry_run=1` to write. The response reports every rejection with its line
+Drop `?dry_run=1` to write.
+
+`default_segment` is the target type for rows that do not name one, so a file of
+one kind needs no `segment` column. It never overrides a segment the file states.
+`default_source` works the same way. There is no equivalent for `consent_basis`:
+a row without one is rejected, and that stays a per-row fact. The response reports every rejection with its line
 number and reason. Rows are rejected for: no consent basis, a malformed address, an
 unknown segment, a `profile_id` that does not exist, a duplicate inside the file,
 an address already loaded, and an address on the suppression list.
@@ -214,6 +224,23 @@ person, and `profile_id` may be either that person's profile (the agent resolves
 every brand they administer) or the brand profile itself. Either works.
 
 ---
+
+## Who may call the functions
+
+`verify_jwt` only checks the bearer token is a *valid* JWT — and the anon key is a
+valid JWT, published in the frontend bundle. So `outreach-send`, `outreach-replies`
+and `outreach-import` each check the caller themselves
+(`_shared/outreach/auth.ts`):
+
+| Caller | Allowed |
+| --- | --- |
+| `service_role` (pg_cron, CLI) | yes |
+| A signed-in **super admin** | yes — this is how the dashboard uploads and previews |
+| The anon key | **no**, 403 |
+| No token | no, 401 |
+
+`outreach-unsubscribe` is the exception and stays fully public: the person clicking
+the link is reading email, not signed in.
 
 ## Modes
 
@@ -237,9 +264,19 @@ export const TEST_RECIPIENTS: string[] = ["REPLACE-ME@example.com"];
 and without moving anybody's cadence. It needs `ANTHROPIC_API_KEY` and no Gmail
 credentials at all.
 
+From the app: **Admin Dashboard → Email Agent → Preview an email**, pick a target
+type, **Preview**.
+
+By `curl` — add `&segment=` to preview one target type, which ignores whether
+anyone is due:
+
 ```bash
-curl -s -X POST "https://ujmisqstpmowanvivtcr.supabase.co/functions/v1/outreach-send?dry=1" -H "Authorization: Bearer $SERVICE_ROLE_KEY" | python3 -m json.tool
+curl -s -X POST "https://ujmisqstpmowanvivtcr.supabase.co/functions/v1/outreach-send?dry=1&segment=brand" -H "Authorization: Bearer $SERVICE_ROLE_KEY" | python3 -m json.tool
 ```
+
+A dry run skips the `TEST_RECIPIENTS` allowlist — nothing is delivered, so the
+allowlist has nothing to protect, and applying it would mean the preview shows
+nothing exactly when you most want to read the copy. Suppression still applies.
 
 ---
 

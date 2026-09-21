@@ -18,6 +18,7 @@
  */
 
 import { errorResponse, handleCors, jsonResponse } from "../_shared/cors.ts";
+import { requireAdminCaller } from "../_shared/outreach/auth.ts";
 import { completeJson } from "../_shared/outreach/anthropic.ts";
 import { systemPrompt } from "../_shared/outreach/guardrails.ts";
 import {
@@ -77,6 +78,10 @@ When in doubt between "how_to" and anything else, do not choose "how_to".
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);
   if (cors) return cors;
+
+  // verify_jwt lets the public anon key through; this is the real gate.
+  const gate = await requireAdminCaller(req);
+  if ("refuse" in gate) return gate.refuse;
 
   try {
     if (await isPaused()) {

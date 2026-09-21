@@ -65,9 +65,24 @@ export const remainingToday = async (): Promise<number> =>
  */
 export type Preflight = { ok: true } | { ok: false; reason: string };
 
-export const preflight = async (contact: Contact): Promise<Preflight> => {
+/**
+ * `dryRun` drops the allowlist check and keeps the suppression check.
+ *
+ * The allowlist exists to stop mail reaching the wrong inbox. A dry run puts
+ * nothing in any inbox — it returns text to a super admin — so applying the
+ * allowlist there only means the preview shows nothing until you empty it, which
+ * is precisely when you most want to read the copy. Suppression still applies:
+ * somebody who asked us to stop should not have their account read to build an
+ * email, even one nobody will receive.
+ */
+export const preflight = async (
+  contact: Contact,
+  opts: { dryRun?: boolean } = {},
+): Promise<Preflight> => {
   if (await isSuppressed(contact.email)) return { ok: false, reason: "suppressed" };
-  if (!allowlisted(contact.email)) return { ok: false, reason: "not in TEST_RECIPIENTS allowlist" };
+  if (!opts.dryRun && !allowlisted(contact.email)) {
+    return { ok: false, reason: "not in TEST_RECIPIENTS allowlist" };
+  }
   return { ok: true };
 };
 

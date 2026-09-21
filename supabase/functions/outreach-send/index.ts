@@ -11,20 +11,21 @@
  */
 
 import { errorResponse, handleCors, jsonResponse } from "../_shared/cors.ts";
+import { requireAdminCaller } from "../_shared/outreach/auth.ts";
 import {
   DIGEST_INTERVAL_DAYS, DROP_LOOKAHEAD_DAYS, DROP_LOOKBACK_DAYS,
   GIVEAWAY_LOOKAHEAD_DAYS, GIVEAWAY_LOOKBACK_DAYS, MAX_ITEMS_PER_SECTION,
   MAX_SENDS_PER_TICK, MAX_SENDS_WITHOUT_ENGAGEMENT, MODE, NEW_LOCATION_DAYS,
   NUDGE_INTERVAL_DAYS, SEQUENCE_INTERVAL_DAYS, SEQUENCE_LENGTH, STATS_WINDOW_DAYS,
-  TEST_RECIPIENTS,
+  SEGMENTS, type Segment, TEST_RECIPIENTS,
 } from "../_shared/outreach/config.ts";
 import {
   composeDigest, composeNudge, composeTip, composeWelcome, NotComposable,
 } from "../_shared/outreach/compose.ts";
 import { deliver, preflight, remainingToday, tickBlocked } from "../_shared/outreach/dispatch.ts";
 import {
-  completenessFor, type Contact, digestFor, dueContacts, hasSomethingToSay,
-  logMessage, updateContact,
+  activeContactsInSegment, completenessFor, type Contact, digestFor, dueContacts,
+  hasSomethingToSay, logMessage, updateContact,
 } from "../_shared/outreach/db.ts";
 
 const DAY_MS = 86_400_000;
@@ -108,12 +109,25 @@ Deno.serve(async (req: Request) => {
   const cors = handleCors(req);
   if (cors) return cors;
 
+  // verify_jwt lets the public anon key through; this is the real gate.
+  const gate = await requireAdminCaller(req);
+  if ("refuse" in gate) return gate.refuse;
+
   try {
     // ?dry=1 composes for the contacts that are due and returns the copy without
     // creating a Gmail draft and without advancing anybody's cadence. It is how you
     // read what each segment's email actually says before letting it out, and it
     // needs no Gmail credentials — only ANTHROPIC_API_KEY.
-    const dry = new URL(req.url).searchParams.get("dry") === "1";
+    const params = new URL(req.url).searchParams;
+    const dry = params.get("dry") === "1";
+    // Preview one target type on demand. A dry run with a segment ignores whether
+    // anyone is *due* — the point is to read the copy now, not to simulate the
+    // schedule — so it picks that segment's active contacts whatever their clock
+    // says. Without it, previewing means waiting for someone to come due.
+    const previewSegment = dry ? (params.get("segment") ?? "").trim().toLowerCase() : "";
+    if (previewSegment && !SEGMENTS.includes(previewSegment as never)) {
+      return errorResponse(`segment must be one of ${SEGMENTS.join(", ")}`, 400);
+    }
 
     const blocked = dry ? null : await tickBlocked();
     if (blocked) {
@@ -124,10 +138,13 @@ Deno.serve(async (req: Request) => {
     const budget = dry ? MAX_SENDS_PER_TICK : Math.min(MAX_SENDS_PER_TICK, await remainingToday());
     // Over-fetch: most candidates resolve to "nothing to say" and cost no budget,
     // so a batch the size of the budget would usually deliver almost nothing.
-    const candidates = await dueContacts(budget * 4);
+    const candidates = previewSegment
+      ? await activeContactsInSegment(previewSegment as Segment, budget)
+      : await dueContacts(budget * 4);
 
     const summary = {
       mode: dry ? "dry-run (nothing delivered, no state changed)" : MODE,
+      preview_segment: previewSegment || null,
       allowlist_active: TEST_RECIPIENTS.length > 0,
       considered: candidates.length,
       budget,
@@ -164,7 +181,7 @@ Deno.serve(async (req: Request) => {
 
       // Before spending a model call: are we allowed to write to this person at
       // all? Suppression first, then the test-recipients allowlist.
-      const pre = await preflight(contact);
+      const pre = await preflight(contact, { dryRun: dry });
       if (!pre.ok) {
         if (!dry) {
           await logMessage({
