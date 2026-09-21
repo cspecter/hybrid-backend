@@ -47,14 +47,17 @@ begin
   -- ── Personas ───────────────────────────────────────────────────────────────
   -- location_employees is unique on (location_id, profile_id), so one profile
   -- cannot be both manager and budtender at the same store. Two profiles.
-  insert into public.profiles (username, display_name, slug, profile_type, bio, status)
-  values ('hybridtestmanager', 'Test Store Manager', 'hybrid-test-manager', 'individual',
+  -- role_id, not profile_type, is what decides: profiles.role_id defaults to 10
+  -- and fn_set_profile_type_from_role_id rewrites profile_type to 'brand' for
+  -- role_id 10, overwriting whatever the insert asks for. role_id 1 is 'user'.
+  insert into public.profiles (username, display_name, slug, profile_type, role_id, bio, status)
+  values ('hybridtestmanager', 'Test Store Manager', 'hybrid-test-manager', 'individual', 1,
           'Test persona. Store manager at the Hybrid Test Dispensary.', 'active')
   on conflict (username) do update set display_name = excluded.display_name
   returning id into mgr_id;
 
-  insert into public.profiles (username, display_name, slug, profile_type, bio, status)
-  values ('hybridtestbudtender', 'Test Budtender', 'hybrid-test-budtender', 'individual',
+  insert into public.profiles (username, display_name, slug, profile_type, role_id, bio, status)
+  values ('hybridtestbudtender', 'Test Budtender', 'hybrid-test-budtender', 'individual', 1,
           'Test persona. Budtender at the Hybrid Test Dispensary.', 'active')
   on conflict (username) do update set display_name = excluded.display_name
   returning id into bud_id;
