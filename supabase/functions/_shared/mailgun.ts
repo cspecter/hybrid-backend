@@ -4,8 +4,18 @@ const MAILGUN_API_KEY = Deno.env.get("MAILGUN_API_KEY")!;
 const MAILGUN_FROM_EMAIL = Deno.env.get("MAILGUN_FROM_EMAIL") || "info@gethybrid.co";
 const MAILGUN_FROM_NAME = Deno.env.get("MAILGUN_FROM_NAME") || "Hybrid";
 
-// Mailgun API base URL
-const MAILGUN_API_BASE = "https://api.mailgun.net/v3";
+// Mailgun API base URL.
+//
+// This was hardcoded to the US endpoint. Mailgun runs two regions with separate
+// credential namespaces, and a key issued in the EU region gets a bare
+// "401 - Forbidden" from the US host — indistinguishable, from here, from a revoked
+// key. A live send test on 24 Sep 2026 got exactly that, so the region is one of the
+// two things it could be and this is the one that costs nothing to rule out:
+//
+//   supabase secrets set MAILGUN_API_BASE=https://api.eu.mailgun.net/v3
+//
+// If the EU host answers the same way, the key itself is the problem.
+const MAILGUN_API_BASE = (Deno.env.get("MAILGUN_API_BASE") || "https://api.mailgun.net/v3").replace(/\/+$/, "");
 
 // Where the buttons in these emails point.
 //
