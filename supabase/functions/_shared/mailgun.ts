@@ -7,6 +7,16 @@ const MAILGUN_FROM_NAME = Deno.env.get("MAILGUN_FROM_NAME") || "Hybrid";
 // Mailgun API base URL
 const MAILGUN_API_BASE = "https://api.mailgun.net/v3";
 
+// Where the buttons in these emails point.
+//
+// Every template hardcoded https://app.gethybrid.co, which does not resolve — it has
+// no DNS at all, so the only call to action in a winner email led nowhere. Same shape
+// as the share links that pointed at hybrid.app, a different product entirely.
+//
+// The default is the address the app is actually served from today. Set SITE_URL as a
+// function secret when that changes, rather than editing four templates again.
+const SITE_URL = (Deno.env.get("SITE_URL") || "https://hybrid-raskin.vercel.app").replace(/\/+$/, "");
+
 export interface EmailOptions {
   to: string | string[];
   subject: string;
@@ -140,7 +150,7 @@ export async function sendWelcomeEmail(data: WelcomeEmailData): Promise<{ succes
           <li>👥 Follow creators and brands</li>
         </ul>
         <p style="margin-top: 30px;">
-          <a href="https://app.gethybrid.co" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+          <a href="${SITE_URL}" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
             Get Started
           </a>
         </p>
@@ -175,7 +185,7 @@ export async function sendCreatorApprovalEmail(data: CreatorApprovalEmailData): 
           <li>💼 Create deals</li>
         </ul>
         <p style="margin-top: 30px;">
-          <a href="https://app.gethybrid.co/settings/creator" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+          <a href="${SITE_URL}/settings/creator" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
             Explore Creator Tools
           </a>
         </p>
@@ -208,7 +218,7 @@ export async function sendEmployeeAddedEmail(data: EmployeeAddedEmailData): Prom
           <li>👤 Represent your location on Hybrid</li>
         </ul>
         <p style="margin-top: 30px;">
-          <a href="https://app.gethybrid.co" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+          <a href="${SITE_URL}" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
             Open Hybrid
           </a>
         </p>
@@ -237,7 +247,7 @@ export async function sendGiveawayWinnerEmail(data: GiveawayWinnerEmailData): Pr
         <p>Congratulations! You've won the <strong>${data.giveawayName}</strong> giveaway${data.prizeName ? ` and will receive ${data.prizeName}` : ""}!</p>
         <p>Check your app for next steps and shipping information.</p>
         <p style="margin-top: 30px;">
-          <a href="https://app.gethybrid.co" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+          <a href="${SITE_URL}" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
             View Prize Details
           </a>
         </p>
