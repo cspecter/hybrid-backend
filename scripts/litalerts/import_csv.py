@@ -75,7 +75,8 @@ def read_rows(path: str):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("file", help="CSV or JSON export from Lit Alerts")
-    ap.add_argument("--chunk", type=int, default=400, help="rows per statement (default 400)")
+    ap.add_argument("--chunk", type=int, default=5000,
+                help="rows per statement (default 5000). The query API returns HTTP 413 above\n                     roughly 20k rows per request; 5k measured at ~357 rows/sec end to end,\n                     so the full 570k-row state export lands in about 27 minutes.")
     ap.add_argument("--label", default=None, help="what to record as the source of this batch")
     ap.add_argument("--dry-run", action="store_true", help="parse and report, send nothing")
     args = ap.parse_args()
@@ -107,6 +108,14 @@ def main():
         got = res["rows"][0]["r"]
         sent += got["rows_imported"]
         print(f"  chunk {i // args.chunk + 1}: +{got['rows_imported']} (total {sent})")
+
+    # Retailers are resolved once per distinct name after the rows are in, not per row
+    # during the insert — the per-row version timed out on a 5,000-row chunk.
+    print("\nresolving retailers...")
+    resolved = run_sql("select public.feed_resolve_retailers() as r;")["rows"][0]["r"]
+    print(" ", json.dumps(resolved))
+    stamped = run_sql(f"select public.feed_apply_retailer_map({batch}) as n;")["rows"][0]["n"]
+    print(f"  stamped onto {stamped:,} rows")
 
     closed = run_sql(f"select public.feed_batch_close({batch}) as r;")["rows"][0]["r"]
     print("\n", json.dumps(closed, indent=1))
