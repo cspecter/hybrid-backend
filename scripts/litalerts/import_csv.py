@@ -19,6 +19,13 @@ Nothing here writes to `products`. Rows land in menu_items_raw for review.
 """
 import argparse, csv, json, os, subprocess, sys, tempfile
 
+# Line-buffered: a 500,000-row load runs for 20 minutes and its progress must be
+# visible while it does, not only once it exits.
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+except Exception:
+    pass
+
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
