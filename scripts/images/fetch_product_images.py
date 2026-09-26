@@ -34,7 +34,11 @@ UA = "HybridImageFetcher/0.1 (+https://hybrid-raskin.vercel.app; contact: aaron.
 BUCKET = "product-images"
 MAX_EDGE = 400
 WEBP_QUALITY = 82
-PER_HOST_DELAY = 0.35          # seconds between requests to the SAME host
+# Seconds between requests from ONE thread to a host. With THREADS_PER_HOST running,
+# the effective rate per host is roughly THREADS_PER_HOST / PER_HOST_DELAY — about 13
+# a second at the defaults, which is unremarkable traffic for a CDN built to serve
+# menus, and still far from the burst that draining by id would have produced.
+PER_HOST_DELAY = 0.22
 FETCH_TIMEOUT = 20
 MAX_DOWNLOAD = 25 * 1024 * 1024
 
@@ -177,6 +181,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0, help="stop after roughly this many images (0 = all pending)")
     ap.add_argument("--hosts", type=int, default=8, help="how many CDNs to work in parallel (default 8)")
+    ap.add_argument("--threads-per-host", type=int, default=3,
+                    help="parallel fetchers per CDN (default 3). The two largest hosts hold 59% "
+                         "of the images, so one thread each makes them the critical path.")
     args = ap.parse_args()
 
     sb_url = os.environ.get("SUPABASE_URL")
@@ -210,8 +217,17 @@ def main():
 
     stats = {"stored": 0, "failed": 0, "bytes_in": 0, "bytes_out": 0}
     lock = threading.Lock()
-    threads = [threading.Thread(target=worker, args=(h, n, sb_url, sb_key, stats, lock), daemon=True)
-               for h, n in plan]
+    # Several fetchers per host, each claiming its own rows. product_images_claim uses
+    # FOR UPDATE SKIP LOCKED, so two threads on the same host never collide over an
+    # image; they simply take different ones.
+    threads = []
+    for h, n in plan:
+        k = max(1, min(args.threads_per_host, n))
+        per = max(1, n // k)
+        for _ in range(k):
+            threads.append(threading.Thread(target=worker, args=(h, per, sb_url, sb_key, stats, lock),
+                                            daemon=True))
+    print(f"{len(threads)} fetchers across {len(plan)} hosts")
     t0 = time.time()
     for t in threads:
         t.start()
