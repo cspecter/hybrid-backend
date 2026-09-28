@@ -1,0 +1,25 @@
+-- Lobo's New York list as the brand supplied it: 22 SKUs, in stock and out.
+insert into public.brand_catalogue (brand_key, sku_label, strain, category, price, in_stock, source_note) values
+  ('lobo', '3.5g Sauce Cannon', 'Sour Diesel', 'Infused Pre-Roll', 20.00, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', 'Minis 5-pack', 'Gruntz', 'Infused Pre-Roll', 15.00, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', 'Minis 5-pack', 'Blue Dream', 'Infused Pre-Roll', 15.00, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', 'Minis 5-pack', 'Papaya Punch', 'Infused Pre-Roll', 15.00, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', 'Bold 1g infused', 'Gruntz', 'Infused Blunt', 6.50, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', 'Bold 1g infused', 'Blue Dream', 'Infused Blunt', 6.50, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', 'Fuerte 1g', 'Papaya Punch', 'Infused Pre-Roll', 6.50, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', '7g pre-ground infused', 'Sativa Blend', 'Flower', 18.00, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', '14g pre-ground infused', 'Sativa Blend', 'Flower', 32.00, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', '28g preground Sativa blend', 'Sativa blend', 'Flower', 45.00, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', '3.5g jar', 'OG Chem', 'Moon Rocks', 23.00, false, 'NY sheet 2026-09-28: EXPIRING 11/10'),
+  ('lobo', '3.5g jar', 'Blueberry Diesel', 'Moon Rocks', 23.00, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', '3.5g jar', 'Purple Punch x SOAP', 'Moon Rocks', 23.00, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', '1g Hashish Jar', 'Permanent Marker', 'Concentrate', 18.00, true, 'NY sheet 2026-09-28: In Stock'),
+  ('lobo', '1g Stardust Jar', 'Pure THC diamond powder', 'Concentrate', 18.00, false, 'NY sheet 2026-09-28: EXPIRING 10/20'),
+  ('lobo', '1g Badder Jar', 'Pop Rockz', 'Concentrate', 18.00, false, 'NY sheet 2026-09-28: EXPIRING 11/10'),
+  ('lobo', 'Fuerte 1g', 'Blue Dream', 'Infused Pre-Roll', 6.50, false, 'NY sheet 2026-09-28: OUT OF STOCK'),
+  ('lobo', 'Presidente 2g infused', 'Wedding Crasher x Gelato', 'Infused Blunt', null, false, 'NY sheet 2026-09-28: OUT OF STOCK'),
+  ('lobo', 'Presidente 2g infused', 'Oreoz x Gelato', 'Infused Blunt', null, false, 'NY sheet 2026-09-28: OUT OF STOCK'),
+  ('lobo', '3.5g jar', 'Chemdawg OG', 'Flower', null, false, 'NY sheet 2026-09-28: OUT OF STOCK'),
+  ('lobo', '3.5g jar', 'Gelonade', 'Moon Rocks', null, false, 'NY sheet 2026-09-28: OUT OF STOCK'),
+  ('lobo', '1g Hashish Jar', 'Blue Dream', 'Concentrate', null, false, 'NY sheet 2026-09-28: OUT OF STOCK')
+on conflict (brand_key, sku_label, strain) do nothing;
