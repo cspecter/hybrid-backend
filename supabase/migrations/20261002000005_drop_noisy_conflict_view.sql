@@ -1,0 +1,24 @@
+-- Remove v_website_conflicts. It does not work and should not be shipped.
+--
+-- The idea was to catch the case found by hand: "NYC Bud - Manhattan" carries budcitynj.com as
+-- supplied data while "NYCBUD Long Island City" carries NYCBUD.com from the state register, and
+-- the register is right. A general detector for that needs to decide two similarly named stores
+-- are one business, and dispensary names cluster so tightly around the same words that a prefix
+-- match flags CannaBees Dispensary against Cannabist and against Cannabis Realm -- three
+-- unrelated businesses sharing "cannab". The shared opening of the real conflict, "nycbud", is
+-- six characters, which is exactly the length that produces that noise.
+--
+-- Shipping it would have put a view in front of someone that is mostly wrong, and an alert
+-- that is mostly wrong teaches people to close it. The three real conflicts are recorded here
+-- instead, because a comment that names them is more use than a query that buries them:
+--
+--   NYC Bud - Manhattan / - Queens   budcitynj.com      register says NYCBUD.com
+--   Treez Dispensary (3 stores)      gwleaf.com         supplied, unverified
+--   Unity Rd (2 stores)              jerseydispensary.com  supplied, unverified
+--
+-- Each is a supplied website the chain rule then copied to that chain's other stores -- the rule
+-- was faithful, the data under it was not. They are findable any time with:
+--
+--   select name, website, website_source from locations
+--    where website_source in ('supplied','chain') order by website, name;
+drop view if exists public.v_website_conflicts;
