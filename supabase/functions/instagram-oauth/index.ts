@@ -14,8 +14,14 @@
  *
  * Scope is instagram_business_basic — the account's own profile and its own media, read only.
  * Nothing here can post, read messages, or see another account.
+ *
+ * A state is issued for a brand or for a store, never both, and the two are stored
+ * differently on purpose. A brand's posts are cached as images; a store's are cached as
+ * shortcodes and embedded, so nothing of the store's is copied here. That difference is
+ * argued in 20261029000001_store_instagram.sql.
  */
 import { supabaseAdmin } from "../_shared/supabase.ts";
+import { shortcodeFromPermalink } from "../_shared/instagram.ts";
 
 const STATE_TTL_MINUTES = 15;
 const MEDIA_COUNT = 6;   // the page shows three; a couple spare covers a deleted post
@@ -35,6 +41,58 @@ async function vault(name: string): Promise<string | null> {
   const { data } = await supabaseAdmin
     .from("decrypted_secrets").select("decrypted_secret").eq("name", name).maybeSingle();
   return (data as { decrypted_secret?: string } | null)?.decrypted_secret ?? null;
+}
+
+/**
+ * Pull a connected store's latest posts and keep only what the embed needs.
+ *
+ * Graph returns media_url and thumbnail_url alongside the permalink; neither is stored. The
+ * page embeds the post and Meta serves the photograph to the visitor, so a copy here would
+ * be a copy we did not need and would have to delete when consent is withdrawn.
+ */
+async function syncStorePosts(locationId: number, token: string): Promise<void> {
+  const res = await fetch("https://graph.instagram.com/me/media?" + new URLSearchParams({
+    fields: "id,media_type,permalink,caption,timestamp",
+    limit: String(MEDIA_COUNT), access_token: token,
+  }));
+
+  if (!res.ok) {
+    const body = (await res.text()).slice(0, 200);
+    console.warn("instagram-oauth: store media pull failed", res.status, body);
+    await supabaseAdmin.from("store_instagram")
+      .update({ last_sync_error: `first sync: ${res.status}` }).eq("location_id", locationId);
+    return;
+  }
+
+  const { data: items = [] } = await res.json() as { data?: Array<Record<string, string>> };
+  const rows = items
+    .map((m) => ({ m, code: shortcodeFromPermalink(m.permalink) }))
+    // A story or anything else without a post permalink has nothing to embed.
+    .filter((x): x is { m: Record<string, string>; code: string } => x.code !== null)
+    .map(({ m, code }, i) => ({
+      location_id: locationId,
+      shortcode: code,
+      permalink: m.permalink,
+      caption: m.caption ?? null,
+      posted_at: m.timestamp ?? null,
+      rank: i + 1,
+      source: "graph",
+      synced_at: new Date().toISOString(),
+    }));
+
+  if (rows.length) {
+    await supabaseAdmin.from("store_instagram_media")
+      .upsert(rows, { onConflict: "location_id,shortcode" });
+    // Posts the store has since deleted should stop showing.
+    await supabaseAdmin.from("store_instagram_media")
+      .delete()
+      .eq("location_id", locationId)
+      .not("shortcode", "in", `(${rows.map((r) => `"${r.shortcode}"`).join(",")})`);
+  }
+
+  await supabaseAdmin.from("store_instagram")
+    .update({ last_sync_at: new Date().toISOString(), last_sync_error: null })
+    .eq("location_id", locationId);
 }
 
 Deno.serve(async (req: Request) => {
@@ -57,7 +115,7 @@ Deno.serve(async (req: Request) => {
   // The state decides the brand, and it is spent on use.
   const { data: st } = await supabaseAdmin
     .from("instagram_oauth_state")
-    .select("state, profile_id, created_by, created_at, used_at")
+    .select("state, profile_id, location_id, created_by, created_at, used_at")
     .eq("state", state)
     .maybeSingle();
 
@@ -116,6 +174,43 @@ Deno.serve(async (req: Request) => {
     return page("Couldn't connect", "Instagram would not say which account that was. Nothing was changed.", 502);
   }
   const me = await meRes.json() as { id: string; username?: string; account_type?: string };
+
+  // The state decided the subject before the user ever left for Instagram, so this is the
+  // one place that has to care which kind it was.
+  if (st.location_id != null) {
+    const { error: sErr } = await supabaseAdmin.from("store_instagram").upsert({
+      location_id: st.location_id,
+      username: me.username ?? null,
+      ig_user_id: me.id,
+      access_token: token,
+      token_expires_at: expiresAt,
+      source: "graph",
+      // Authorising is the consent, and it is written down the same way an emailed yes
+      // would be. No store page shows a post without a row saying who agreed and how.
+      consent_status: "granted",
+      consent_source: "oauth",
+      consent_by: st.created_by ?? null,
+      consent_at: new Date().toISOString(),
+      revoked_at: null,
+      revoked_by: null,
+      status: "active",
+      last_sync_error: null,
+    }, { onConflict: "location_id" });
+
+    if (sErr) {
+      console.error("instagram-oauth: could not store the store connection", sErr.message);
+      return page("Couldn't connect", "The connection could not be saved. Please try again.", 500);
+    }
+
+    try {
+      await syncStorePosts(st.location_id as number, token);
+    } catch (e) {
+      console.warn("instagram-oauth: first store pull threw", e instanceof Error ? e.message : String(e));
+    }
+
+    return page("Instagram connected",
+      `@${me.username ?? "your account"} is connected. Your latest posts will show on your store page.`);
+  }
 
   const { error: upErr } = await supabaseAdmin.from("brand_instagram").upsert({
     profile_id: st.profile_id,
