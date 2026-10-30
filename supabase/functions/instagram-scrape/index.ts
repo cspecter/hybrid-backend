@@ -245,8 +245,11 @@ async function syncSubject(
 }
 
 Deno.serve(async (req: Request) => {
-  const bearer = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  if (!tokenMatches(bearer)) return json({ ok: false, error: "Not authorised" }, 401);
+  // Authorization carries the anon key so the platform gateway lets the call through; it is
+  // public and proves nothing. This header is the one that decides. See
+  // 20261030000002_cron_invoke_headers.sql for why both exist.
+  const invoke = (req.headers.get("X-Invoke-Token") || "").trim();
+  if (!tokenMatches(invoke)) return json({ ok: false, error: "Not authorised" }, 401);
 
   // Deletions first, and regardless of whether anything else can run.
   const purge = await drainPurgeQueue();

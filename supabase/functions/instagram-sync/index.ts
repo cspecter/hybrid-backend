@@ -47,8 +47,11 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
 Deno.serve(async (req: Request) => {
-  const bearer = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  if (!tokenMatches(bearer)) return json({ ok: false, error: "Not authorised" }, 401);
+  // Authorization carries the anon key so the platform gateway lets the call through; it is
+  // public and proves nothing. This header is the one that decides. See
+  // 20261030000002_cron_invoke_headers.sql for why both exist.
+  const invoke = (req.headers.get("X-Invoke-Token") || "").trim();
+  if (!tokenMatches(invoke)) return json({ ok: false, error: "Not authorised" }, 401);
 
   const appSecret = await vault("instagram_app_secret");
   const { data: conns } = await supabaseAdmin
