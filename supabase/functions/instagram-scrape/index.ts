@@ -65,6 +65,7 @@ type ScrapedPost = {
   caption: string | null;
   postedAt: string | null;
   imageUrl: string | null;
+  videoUrl: string | null;
   width: number | null;
   height: number | null;
   isVideo: boolean;
@@ -120,8 +121,9 @@ function readPosts(items: Array<Record<string, unknown>>): ScrapedPost[] {
       permalink: String(it.url ?? `https://www.instagram.com/p/${shortcode}/`),
       caption: (it.caption as string) ?? null,
       postedAt: (it.timestamp as string) ?? null,
-      // A video's displayUrl is its cover frame, which is the thing we want to show.
+      // A video's displayUrl is its cover frame, which becomes the poster.
       imageUrl: (it.displayUrl as string) ?? (it.imageUrl as string) ?? null,
+      videoUrl: (it.videoUrl as string) ?? null,
       width: Number(it.dimensionsWidth) || null,
       height: Number(it.dimensionsHeight) || null,
       isVideo: type === "Video" || it.isVideo === true,
@@ -175,23 +177,35 @@ async function fetchPosts(
   return { posts: readPosts(list), blocked: null };
 }
 
-/** Copy one picture into our bucket. Returns the stored path, or null if it could not be. */
-async function storeImage(
-  subjectType: string, subjectId: number, post: ScrapedPost,
+/**
+ * Copy one file into our bucket. Returns the stored path, or null if it could not be.
+ *
+ * A reel's cover keeps the .jpg extension beside the .mp4 on the same base path, because
+ * the client derives a poster by swapping the extension rather than storing it separately.
+ */
+async function storeFile(
+  subjectType: string, subjectId: number, shortcode: string,
+  url: string | null, kind: "image" | "video",
 ): Promise<string | null> {
-  if (!post.imageUrl) return null;
-  const res = await fetch(post.imageUrl);
+  if (!url) return null;
+  const res = await fetch(url);
   if (!res.ok) {
-    console.warn("instagram-scrape: image fetch failed", post.shortcode, res.status);
+    console.warn("instagram-scrape: fetch failed", kind, shortcode, res.status);
     return null;
   }
-  const contentType = res.headers.get("content-type") || "image/jpeg";
-  if (!/^image\/(jpeg|png|webp)$/.test(contentType)) {
-    console.warn("instagram-scrape: unexpected content type", post.shortcode, contentType);
+  const contentType = (res.headers.get("content-type") || "").split(";")[0].trim()
+    || (kind === "video" ? "video/mp4" : "image/jpeg");
+  const allowed = kind === "video"
+    ? /^video\/mp4$/
+    : /^image\/(jpeg|png|webp)$/;
+  if (!allowed.test(contentType)) {
+    console.warn("instagram-scrape: unexpected content type", kind, shortcode, contentType);
     return null;
   }
-  const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
-  const path = `${subjectType}/${subjectId}/${post.shortcode}.${ext}`;
+  const ext = kind === "video"
+    ? "mp4"
+    : contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+  const path = `${subjectType}/${subjectId}/${shortcode}.${ext}`;
 
   const { error } = await supabaseAdmin.storage.from(BUCKET)
     .upload(path, new Uint8Array(await res.arrayBuffer()), { contentType, upsert: true });
@@ -232,14 +246,23 @@ async function syncSubject(
 
   // What we already hold, so an unchanged post is not downloaded twice.
   const { data: existing } = await supabaseAdmin.from("instagram_consent_media")
-    .select("shortcode, image_path").match(key);
-  const held = new Map((existing ?? []).map((r) => [r.shortcode as string, r.image_path as string | null]));
+    .select("shortcode, image_path, video_path").match(key);
+  const held = new Map((existing ?? []).map((r) => [r.shortcode as string, {
+    image: r.image_path as string | null,
+    video: r.video_path as string | null,
+  }]));
 
   const rows = [];
   for (let i = 0; i < posts.length; i++) {
     const p = posts[i];
     const already = held.get(p.shortcode);
-    const path = already ?? await storeImage(s.subject_type, s.subject_id, p);
+    const path = already?.image
+      ?? await storeFile(s.subject_type, s.subject_id, p.shortcode, p.imageUrl, "image");
+    // Only a reel has one, and only fetched once — these are megabytes, not kilobytes.
+    const videoPath = p.isVideo
+      ? (already?.video
+         ?? await storeFile(s.subject_type, s.subject_id, p.shortcode, p.videoUrl, "video"))
+      : null;
     rows.push({
       ...key,
       shortcode: p.shortcode,
@@ -249,6 +272,7 @@ async function syncSubject(
       rank: i + 1,
       source: "scrape",
       image_path: path,
+      video_path: videoPath,
       image_width: p.width,
       image_height: p.height,
       is_video: p.isVideo,
