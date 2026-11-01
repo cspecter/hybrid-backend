@@ -40,10 +40,18 @@ const tokenMatches = (given: string): boolean => {
   return diff === 0;
 };
 
+// Through an RPC, not a table read. `from("decrypted_secrets")` resolves to
+// public.decrypted_secrets; the view lives in the vault schema, which PostgREST does not
+// expose, so that returned null however many secrets were in Vault and this function
+// reported the token missing while it sat there.
 async function vault(name: string): Promise<string | null> {
-  const { data } = await supabaseAdmin
-    .from("decrypted_secrets").select("decrypted_secret").eq("name", name).maybeSingle();
-  return (data as { decrypted_secret?: string } | null)?.decrypted_secret ?? null;
+  const { data, error } = await supabaseAdmin.rpc("instagram_scrape_secret", { p_name: name });
+  if (error) {
+    console.error("instagram-scrape: could not read secret", name, error.message);
+    return null;
+  }
+  const v = typeof data === "string" ? data.trim() : "";
+  return v.length > 0 ? v : null;
 }
 
 const json = (body: unknown, status = 200) =>
@@ -253,8 +261,23 @@ async function syncSubject(
 
   // Posts the shop has since deleted stop showing, and their copies are queued for removal
   // by the trigger on the way out.
-  await supabaseAdmin.from("instagram_consent_media").delete().match(key)
+  //
+  // Only inside the window the provider actually looked at, though. It returns the N most
+  // recent posts, so anything older than the oldest of those was never a candidate to come
+  // back and its absence says nothing about whether it still exists. Pruning on absence
+  // alone made the fetch limit silently authoritative: Housing Works had nine posts stored
+  // and a limit of six would have deleted the three oldest, and their Hybrid posts with
+  // them, the first time this ran.
+  const windowStart = rows
+    .map((r) => r.posted_at)
+    .filter((d): d is string => typeof d === "string" && d.length > 0)
+    .sort()[0] ?? null;
+  let prune = supabaseAdmin.from("instagram_consent_media").delete().match(key)
     .not("shortcode", "in", `(${rows.map((r) => `"${r.shortcode}"`).join(",")})`);
+  // A row with no date cannot be placed in the window, so it is left alone rather than
+  // guessed at.
+  if (windowStart) prune = prune.gte("posted_at", windowStart);
+  await prune;
 
   await supabaseAdmin.from("instagram_consent")
     .update({ last_sync_at: new Date().toISOString(), last_sync_error: null }).match(key);
