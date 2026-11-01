@@ -341,7 +341,13 @@ Deno.serve(async (req: Request) => {
     .select("subject_type, subject_id, username")
     .eq("source", "scrape")
     .eq("consent_status", "granted")
-    .eq("status", "active");
+    .eq("status", "active")
+    // Least recently synced first, never-synced before all of them. The first live run
+    // took three minutes for five accounts — video is slow — and the platform returned
+    // 504 to the caller while the function carried on, finishing four and never reaching
+    // the fifth. Whatever gets cut off is therefore first in line next time, instead of
+    // one unlucky account at the end of the list never being fetched at all.
+    .order("last_sync_at", { ascending: true, nullsFirst: true });
 
   const out = { checked: 0, synced: 0, empty: 0, failed: 0, skipped: 0 };
   for (const s of (subjects ?? []) as Subject[]) {
