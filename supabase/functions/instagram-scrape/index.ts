@@ -126,7 +126,7 @@ function readPosts(items: Array<Record<string, unknown>>): ScrapedPost[] {
 /** Ask the provider for this account's recent posts. */
 async function fetchPosts(
   username: string, apifyToken: string, actor: string, extraInput: Record<string, unknown>,
-): Promise<ScrapedPost[]> {
+): Promise<{ posts: ScrapedPost[]; blocked: string | null }> {
   const res = await fetch(
     `https://api.apify.com/v2/acts/${encodeURIComponent(actor)}/run-sync-get-dataset-items` +
     `?token=${encodeURIComponent(apifyToken)}&timeout=180`,
@@ -150,7 +150,21 @@ async function fetchPosts(
     throw new Error(`provider ${res.status}: ${(await res.text()).slice(0, 200)}`);
   }
   const items = await res.json() as Array<Record<string, unknown>>;
-  return readPosts(Array.isArray(items) ? items : []);
+  const list = Array.isArray(items) ? items : [];
+
+  // When the account is gated, the actor does not return posts — it returns the profile,
+  // carrying Instagram's own words for why. Measured against @get_jaunty, which answers
+  // "You must be 21 years old or over to see this profile" with latestPosts empty, while
+  // @hw.cco and @cheechandchong return their posts from the same token with no session.
+  // The gate is per-account, so reporting the actual reason beats guessing at one.
+  const first = list[0] ?? {};
+  if (list.length > 0 && !first.shortCode && !first.shortcode) {
+    const reason = String(first.restrictionReason ?? first.error ?? "").trim();
+    if (reason || first.isRestrictedProfile || first.private) {
+      return { posts: [], blocked: reason || (first.private ? "This account is private." : "Instagram would not return this account's posts.") };
+    }
+  }
+  return { posts: readPosts(list), blocked: null };
 }
 
 /** Copy one picture into our bucket. Returns the stored path, or null if it could not be. */
@@ -186,8 +200,9 @@ async function syncSubject(
   const key = { subject_type: s.subject_type, subject_id: s.subject_id };
 
   let posts: ScrapedPost[];
+  let blocked: string | null = null;
   try {
-    posts = await fetchPosts(s.username as string, apifyToken, actor, extraInput);
+    ({ posts, blocked } = await fetchPosts(s.username as string, apifyToken, actor, extraInput));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     await supabaseAdmin.from("instagram_consent")
@@ -196,11 +211,13 @@ async function syncSubject(
   }
 
   if (posts.length === 0) {
-    // Most often this is the age gate with no session supplied, which is a configuration
-    // answer rather than a transient failure, so it is worth saying so plainly.
+    // A configuration answer rather than a transient failure, so it is worth saying so
+    // plainly — and when Instagram gave a reason, saying that instead of a guess.
     await supabaseAdmin.from("instagram_consent").update({
       last_sync_at: new Date().toISOString(),
-      last_sync_error: "provider returned no posts — if this account is age-restricted, the provider needs a logged-in session",
+      last_sync_error: blocked
+        ? `Instagram: ${blocked} Reading this account needs a logged-in session, set by an administrator in instagram_scrape_input.`
+        : "The provider returned no posts. If this account is age-restricted it needs a logged-in session.",
     }).match(key);
     return "empty";
   }
