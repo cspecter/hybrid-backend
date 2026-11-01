@@ -227,8 +227,11 @@ async function syncSubject(
     ({ posts, blocked } = await fetchPosts(s.username as string, apifyToken, actor, extraInput));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    // last_sync_at moves even on failure. It records an attempt, not a success, and
+    // without it a permanently failing account sorts first forever and starves the rest.
     await supabaseAdmin.from("instagram_consent")
-      .update({ last_sync_error: msg.slice(0, 300) }).match(key);
+      .update({ last_sync_at: new Date().toISOString(), last_sync_error: msg.slice(0, 300) })
+      .match(key);
     return "failed";
   }
 
@@ -315,6 +318,16 @@ Deno.serve(async (req: Request) => {
   const invoke = (req.headers.get("X-Invoke-Token") || "").trim();
   if (!tokenMatches(invoke)) return json({ ok: false, error: "Not authorised" }, 401);
 
+  // How many links into a chained run this is. The cron sends none; this function sends
+  // depth + 1 to itself when it runs out of budget with subjects left.
+  let depth = 0;
+  try {
+    const body = await req.json() as { depth?: unknown };
+    if (typeof body?.depth === "number" && Number.isFinite(body.depth)) {
+      depth = Math.max(0, Math.min(100, Math.floor(body.depth)));
+    }
+  } catch { /* no body, or not JSON: this is a first invocation */ }
+
   // Deletions first, and regardless of whether anything else can run.
   const purge = await drainPurgeQueue();
 
@@ -349,13 +362,59 @@ Deno.serve(async (req: Request) => {
     // one unlucky account at the end of the list never being fetched at all.
     .order("last_sync_at", { ascending: true, nullsFirst: true });
 
-  const out = { checked: 0, synced: 0, empty: 0, failed: 0, skipped: 0 };
-  for (const s of (subjects ?? []) as Subject[]) {
+  // Work to a clock, not to a list length.
+  //
+  // Five accounts took three minutes on the first live run — downloading reels is slow —
+  // and the platform answered the caller 504 after one minute while this kept going. It
+  // finished four and never reached the fifth. So: spend a budget comfortably inside the
+  // platform's patience, then hand the rest to a fresh invocation and return.
+  //
+  // Ordering is by last_sync_at nulls first, and every outcome moves that column, so the
+  // next link in the chain naturally starts where this one stopped. No cursor to keep.
+  const BUDGET_MS = 50_000;
+  // A hard stop. Ten links at fifty seconds is far more than a real queue needs, and it
+  // means a bug here costs a few minutes rather than running until someone notices.
+  const MAX_CHAIN = 10;
+  const startedAt = Date.now();
+
+  const out = { checked: 0, synced: 0, empty: 0, failed: 0, skipped: 0, deferred: 0 };
+  const queue = (subjects ?? []) as Subject[];
+  let i = 0;
+  for (; i < queue.length; i++) {
+    if (i > 0 && Date.now() - startedAt > BUDGET_MS) break;
+    const s = queue[i];
     if (!s.username) { out.skipped++; continue; }
     out.checked++;
     const r = await syncSubject(s, apifyToken, actor, extraInput);
     out[r === "synced" ? "synced" : r === "empty" ? "empty" : "failed"]++;
   }
+  out.deferred = Math.max(0, queue.length - i);
 
-  return json({ ok: true, purge, scraped: out, actor });
+  // Hand the remainder on. Fire and forget: this invocation has already spent its budget,
+  // and waiting for the next one to finish is the very thing that caused the timeout.
+  let chained = false;
+  if (out.deferred > 0 && depth < MAX_CHAIN) {
+    const base = (Deno.env.get("SUPABASE_URL") || "").replace(/\/+$/, "");
+    if (base) {
+      chained = true;
+      const next = fetch(`${base}/functions/v1/instagram-scrape`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // The same credentials this request arrived with; nothing new is minted.
+          "Authorization": req.headers.get("Authorization") ?? "",
+          "X-Invoke-Token": invoke,
+        },
+        body: JSON.stringify({ depth: depth + 1 }),
+      }).catch((e) => console.error("instagram-scrape: could not chain", String(e).slice(0, 120)));
+      // Returning a response can tear the isolate down with the request still in flight,
+      // which would silently end the chain. waitUntil keeps it alive just long enough.
+      const rt = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+      if (typeof rt?.waitUntil === "function") rt.waitUntil(next);
+    } else {
+      console.error("instagram-scrape: SUPABASE_URL unset; cannot chain, %d deferred", out.deferred);
+    }
+  }
+
+  return json({ ok: true, purge, scraped: out, actor, depth, chained });
 });
