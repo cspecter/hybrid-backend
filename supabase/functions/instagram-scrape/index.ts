@@ -218,13 +218,29 @@ async function storeFile(
 
 async function syncSubject(
   s: Subject, apifyToken: string, actor: string, extraInput: Record<string, unknown>,
+  fallback: { actor: string; input: Record<string, unknown> } | null,
 ): Promise<"synced" | "empty" | "failed"> {
   const key = { subject_type: s.subject_type, subject_id: s.subject_id };
 
   let posts: ScrapedPost[];
   let blocked: string | null = null;
+  let usedFallback = false;
   try {
     ({ posts, blocked } = await fetchPosts(s.username as string, apifyToken, actor, extraInput));
+    // Age-restricted, and a second route is configured. Only on a refusal: the fallback is
+    // there because it authenticates, which makes it slower and dearer than the normal
+    // actor, and three accounts in four do not need it.
+    if (blocked && fallback) {
+      console.log("instagram-scrape: %s restricted, retrying via %s", s.username, fallback.actor);
+      const retry = await fetchPosts(s.username as string, apifyToken, fallback.actor, fallback.input);
+      if (retry.posts.length > 0) {
+        posts = retry.posts;
+        blocked = null;
+        usedFallback = true;
+      } else {
+        blocked = retry.blocked ?? blocked;
+      }
+    }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // last_sync_at moves even on failure. It records an attempt, not a success, and
@@ -241,8 +257,10 @@ async function syncSubject(
     await supabaseAdmin.from("instagram_consent").update({
       last_sync_at: new Date().toISOString(),
       last_sync_error: blocked
-        ? `Instagram: ${blocked} Reading this account needs a logged-in session, set by an administrator in instagram_scrape_input.`
-        : "The provider returned no posts. If this account is age-restricted it needs a logged-in session.",
+        ? (fallback
+            ? `Instagram: ${blocked} The fallback reader could not see it either.`
+            : `Instagram: ${blocked} Reading an age-restricted account needs a provider that signs in, set by an administrator as instagram_scrape_fallback_actor.`)
+        : "The provider returned no posts. If this account is age-restricted it needs a provider that signs in.",
     }).match(key);
     return "empty";
   }
@@ -308,6 +326,7 @@ async function syncSubject(
 
   await supabaseAdmin.from("instagram_consent")
     .update({ last_sync_at: new Date().toISOString(), last_sync_error: null }).match(key);
+  if (usedFallback) console.log("instagram-scrape: %s synced via fallback", s.username);
   return "synced";
 }
 
@@ -337,6 +356,20 @@ Deno.serve(async (req: Request) => {
       note: "instagram_scrape_token is not in Vault; nothing was fetched" });
   }
   const actor = (await vault("instagram_scrape_actor")) || "apify~instagram-scraper";
+
+  // The second route, tried only when the first is refused. Unset today: no actor tested
+  // against @get_jaunty could see it, so there is nothing honest to default to.
+  const fallbackActor = await vault("instagram_scrape_fallback_actor");
+  let fallback: { actor: string; input: Record<string, unknown> } | null = null;
+  if (fallbackActor) {
+    let fbInput: Record<string, unknown> = {};
+    const raw = await vault("instagram_scrape_fallback_input");
+    if (raw) {
+      try { fbInput = JSON.parse(raw) as Record<string, unknown>; }
+      catch { console.error("instagram-scrape: instagram_scrape_fallback_input is not valid JSON; ignoring it"); }
+    }
+    fallback = { actor: fallbackActor, input: fbInput };
+  }
 
   let extraInput: Record<string, unknown> = {};
   const extraRaw = await vault("instagram_scrape_input");
@@ -385,7 +418,7 @@ Deno.serve(async (req: Request) => {
     const s = queue[i];
     if (!s.username) { out.skipped++; continue; }
     out.checked++;
-    const r = await syncSubject(s, apifyToken, actor, extraInput);
+    const r = await syncSubject(s, apifyToken, actor, extraInput, fallback);
     out[r === "synced" ? "synced" : r === "empty" ? "empty" : "failed"]++;
   }
   out.deferred = Math.max(0, queue.length - i);
@@ -416,5 +449,5 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  return json({ ok: true, purge, scraped: out, actor, depth, chained });
+  return json({ ok: true, purge, scraped: out, actor, fallback: fallback?.actor ?? null, depth, chained });
 });
