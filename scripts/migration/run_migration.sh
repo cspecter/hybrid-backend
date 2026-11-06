@@ -20,13 +20,17 @@ echo "Using pg_dump version: $(pg_dump --version)"
 # Configuration - UPDATE THESE VALUES
 OLD_DB_HOST="aws-0-us-east-1.pooler.supabase.com"
 OLD_DB_USER="postgres.axzdfdpwfsynrajqqoae"
-OLD_DB_PASSWORD="HYBRIDisCANNABIS"
+# Supplied by the environment. These scripts are committed, so a value here would be
+# published; ":?" makes the script stop with this message rather than run with an
+# empty password. Export it for the one run, e.g. read -s, and do not add it to a
+# file that git tracks.
+OLD_DB_PASSWORD="${OLD_DB_PASSWORD:?set OLD_DB_PASSWORD in the environment before running this script}"
 OLD_DB_PORT="5432"
 
 # Use session pooler for NEW database as well (direct connection blocked)
 NEW_DB_HOST="aws-0-us-west-2.pooler.supabase.com"
 NEW_DB_USER="postgres.ujmisqstpmowanvivtcr"
-NEW_DB_PASSWORD="HYBRIDisCANNABIS"
+NEW_DB_PASSWORD="${NEW_DB_PASSWORD:?set NEW_DB_PASSWORD in the environment before running this script}"
 NEW_DB_PORT="5432"
 
 OLD_PROJECT_REF="axzdfdpwfsynrajqqoae"

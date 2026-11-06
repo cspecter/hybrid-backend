@@ -81,9 +81,9 @@ public_id UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE
 ```bash
 # 1. Set your database credentials
 export OLD_DB_HOST="db.xxxxxxxxxx.supabase.co"
-export OLD_DB_PASSWORD="your_old_password"
+export OLD_DB_PASSWORD="<your-password>"   # do not paste a real one here
 export NEW_DB_HOST="db.yyyyyyyyyy.supabase.co"
-export NEW_DB_PASSWORD="your_new_password"
+export NEW_DB_PASSWORD="<your-password>"   # do not paste a real one here
 
 # 2. Run the export script on OLD database
 # This creates integer IDs and stores UUID mappings
