@@ -1,0 +1,76 @@
+verdict	brand	profile_id	website	handle_on_site	http	note
+accept	ayrloom	5382	https://ayrloom.com		200	ACCEPT
+accept	Florist Farms	4331	https://floristfarms.com	floristfarms	200	ACCEPT
+accept	Ruby Farms	5556	https://rubyfarms.com		200	ACCEPT
+accept	Dank. by definition.	5419	https://dankbydefinition.com	dankbydefinition	200	ACCEPT
+accept	Fernway	5435	https://fernway.com	fernway	200	ACCEPT
+accept	Jetpacks	5491	https://jetpacks.com		200	ACCEPT
+accept	Heady Tree	5468	https://headytree.com	headytree	200	ACCEPT
+accept	Akron Bloom	5633	https://akronbloom.com		200	ACCEPT
+accept	House of Sacci	5482	https://houseofsacci.com	thehouseofsacci	200	ACCEPT
+accept	Bodega Boyz	523	https://bodegaboyz.com	bodegaboyz	200	ACCEPT
+accept	Eaton Botanicals	5427	https://eatonbotanicals.com	eatonbotanicals	200	ACCEPT
+accept	Doobie Labs	5423	https://doobielabs.com	doobielabs.ny	200	ACCEPT
+accept	Smokiez	3487	https://smokiez.com	smokiez.handcrafted	200	ACCEPT
+accept	Mfused	5512	https://mfused.com	superfog.mfused	200	ACCEPT
+accept	Bison Botanics	5649	https://bisonbotanics.com	bisonbotanics	200	ACCEPT
+accept	Smoakland	5567	https://smoakland.com	smoaklandmedia	200	ACCEPT
+accept	Alchemy Pure	5634	https://alchemypure.com	alchemy_pure	200	ACCEPT
+accept	Honey King	5479	https://honeyking.com	honeykingden	200	ACCEPT
+accept	Kushy Punch	3563	https://kushypunch.com	kushypunchofficial	200	ACCEPT
+accept	Boutiq	5659	https://boutiq.com		200	ACCEPT
+accept	Honest Pharm Co.	5766	https://honestpharmco.com	honestpharmco	200	ACCEPT
+accept	Miss Grass	3399	https://missgrass.com	missgrass	200	ACCEPT
+accept	Mac Pharms	5810	https://macpharms.com	macpharms.official	200	ACCEPT
+accept	Weed Water	5593	https://weedwater.com		200	ACCEPT
+accept	Brass Knuckles	5395	https://brassknuckles.com		200	ACCEPT
+accept	Muha Meds	5520	https://muhameds.com	muhameds	200	ACCEPT
+accept	Minny Grown	5514	https://minnygrown.com	minnygrown	200	ACCEPT
+accept	Sluggers	3257	https://sluggers.com	sluggersswag	200	ACCEPT
+review	Nanticoke	5522	https://nanticoke.com	domainmarketcom	200	review: brand name, no cannabis signal
+review	Bouket	5393	https://bouket.com		200	review: brand name, no cannabis signal
+review	Left Coast	5503	https://leftcoast.com	leftcoasttshirtco	200	review: brand name, no cannabis signal
+review	Golden Garden	5448	https://goldengarden.com		200	review: brand name, no cannabis signal
+review	Dragonfly	5425	https://dragonfly.com		200	review: brand name, no cannabis signal
+review	Jetty	5785	https://jetty.com	jetty	200	review: brand name, no cannabis signal
+review	To The Moon	5580	https://tothemoon.com	2themoon_global	200	review: brand name, no cannabis signal
+review	Papa's Herb	387	https://papasherb.com		200	review: brand name, no cannabis signal
+review	Florette	3380	https://florette.com	florette_france	200	review: brand name, no cannabis signal
+review	urbanXtracts	5944	https://urbanxtracts.com		200	review: brand name, no cannabis signal
+review	Lowell Farms	237	https://lowellfarms.com	lowellfarms	200	review: accepted content but redirects to lowellfarmservices.com
+review	Lion Order	5802	https://lionorder.com		200	review: brand name, no cannabis signal
+review	Generic AF	5445	https://genericaf.com		200	review: accepted content but redirects to newyork-af.com
+review	Munchkins	5828	https://munchkins.com		200	review: brand name, no cannabis signal
+review	Breakfast Connections	5660	https://breakfastconnections.com	breakfastconnections	200	review: accepted content but redirects to breakfastconnections.co
+review	Nerd Bar	5835	https://nerdbar.com	fandomsbar	200	review: brand name, no cannabis signal
+review	No Bad Days	5839	https://nobaddays.com	nobaddaysco	200	review: brand name, no cannabis signal
+review	Jenny's	5779	https://jennys.com		200	review: accepted content but redirects to namebrokers.com
+review	Pot & Head	5859	https://pothead.com		200	review: brand name, no cannabis signal
+reject	Off Hours	5527	https://offhours.com		200	REJECT: unrelated site
+reject	Revert Cannabis	5550	https://revertcannabis.com			REJECT: URLError
+reject	Hashtag Honey	5464	https://hashtaghoney.com		200	REJECT: unrelated site
+reject	Cannabals	5401	https://cannabals.com		200	REJECT: unrelated site
+reject	Mini Mart	5513	https://minimart.com		200	REJECT: unrelated site
+reject	Hepworth	5469	https://hepworth.com			REJECT: URLError
+reject	Kings & Queens	5494	https://kingsqueens.com			REJECT: URLError
+reject	Good Tide	5450	https://goodtide.com			REJECT: URLError
+reject	The Plug Pack	5931	https://theplugpack.com			REJECT: URLError
+reject	Umamii	5942	https://umamii.com		200	REJECT: unrelated site
+reject	5 Boro	5373	https://5boro.com		200	REJECT: unrelated site
+reject	Spacebuds	5570	https://spacebuds.com		404	REJECT: HTTP 404
+reject	RIPPED	5551	https://ripped.com		402	REJECT: HTTP 402
+reject	Moon Dust	5822	https://moondust.com		200	REJECT: unrelated site
+reject	Supernaturals	5915	https://supernaturals.com		200	REJECT: unrelated site
+reject	Dark Heart	5420	https://darkheart.com		200	REJECT: unrelated site
+reject	Stone Road	5905	https://stoneroad.com			REJECT: URLError
+reject	Cheevo	5681	https://cheevo.com		200	REJECT: unrelated site
+reject	Animal House	5377	https://animalhouse.com			REJECT: URLError
+reject	Soft Power Sweets	5896	https://softpowersweets.com		403	REJECT: HTTP 403
+reject	7 SEAZ	5628	https://7seaz.com		200	REJECT: unrelated site
+reject	Hudson Cannabis	5483	https://hudsoncannabis.com		200	REJECT: unrelated site
+reject	Rec Roots	5870	https://recroots.com		200	REJECT: unrelated site
+reject	Cycling Frog	5417	https://cyclingfrog.com		403	REJECT: HTTP 403
+reject	Dark Star	5696	https://darkstar.com			REJECT: URLError
+reject	FLAMER	5437	https://flamer.com		530	REJECT: HTTP 530
+reject	High 5	5471	https://high5.com			REJECT: URLError
+reject	Zizzle	5960	https://zizzle.com			REJECT: URLError
