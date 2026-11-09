@@ -35,13 +35,18 @@
 --     lists.product_count, is SECURITY DEFINER, so counts are unaffected by
 --     anything below.
 --
--- Super admins are deliberately NOT given a disjunct. Unlike products and
--- giveaways, `lists` has no "Super admins can do everything" sibling policy to
--- fall back on, so a disjunct here would be the thing that grants it -- a new
--- decision about who may read someone's private list, not a continuation of an
--- existing one. Nothing in the client needs it: admin-dashboard.jsx contains no
--- read of `lists` on any branch. Fail closed; add it deliberately if it is ever
--- wanted.
+-- Super admins are deliberately NOT given a disjunct, for the same reason
+-- 20260918000011 gives them none on giveaways and products: both tables already
+-- carry a "Super admins can do everything" policy FOR ALL, TO authenticated,
+-- USING (EXISTS (... role_id = 9)), and a FOR ALL policy covers SELECT.
+-- Permissive policies OR together, so super admins keep full read and repeating
+-- the test here would be redundant.
+--
+-- Those two sibling policies are in the live database and in NO migration in
+-- this repo -- read out of pg_policies on ujmisqstpmowanvivtcr, not inferred
+-- from the files. That is SUPABASE-TODO item 13 happening again: schema applied
+-- to production out of band. They should be committed on their own, as a record
+-- of what is actually there. Nothing below depends on that happening.
 
 
 -- =====================================
@@ -108,16 +113,17 @@ CREATE POLICY "Public lists, and your own private ones" ON public.lists
 -- lists" (20241204000014) -- so the only writer is the owner, and the FTS and
 -- count triggers that fire on those writes are unaffected.
 --
--- One thing a reader has to check here and does not have to check on `lists`:
--- this table also carries "Profiles can add and remove lists_products." as a
--- FOR ALL policy, and FOR ALL covers SELECT. Permissive policies OR together, so
--- it is a second read path that replacing the SELECT policy does not close. It
--- is harmless -- its USING is the same owner-or-profile_admins test, which is a
--- strict subset of "the parent list is visible to me": anyone who owns or
--- administers the list can see it, so that disjunct can never admit a row the
--- policy below would withhold. It is left in place because it is also what
--- authorises the writes. `lists` has no FOR ALL policy of any kind, which is why
--- the note about super admins above applies there and not here.
+-- This table carries two FOR ALL policies, and FOR ALL covers SELECT, so each is
+-- a second read path that replacing the SELECT policy does not close. Both were
+-- checked against pg_policies and both are harmless:
+--
+--   "Profiles can add and remove lists_products." -- the same
+--   owner-or-profile_admins test, a strict subset of "the parent list is visible
+--   to me", so it can never admit a row the policy below would withhold. Left in
+--   place because it is also what authorises the writes.
+--
+--   "Super admins can do everything" -- role_id = 9, the same sibling `lists`
+--   has, and equally absent from this repo. Intended.
 DROP POLICY IF EXISTS "lists_products are viewable by everyone." ON public.lists_products;
 CREATE POLICY "Contents of a list you can see" ON public.lists_products
     AS PERMISSIVE FOR SELECT
