@@ -1,6 +1,6 @@
 -- Reconcile the 167 brands marked "Consented to scrape? = Yes" in
--- OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (sheet id
--- 1PNWYlh81xjKzNXy0xaG53W5wYE84w9VLXTTi3P6a3I4, column H, rows 2..168) against
+-- OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (column H,
+-- rows 2..168; the sheet id is in the consent rows, not here) against
 -- the brand profiles that already exist.
 --
 -- READ ONLY. It inserts nothing, creates no profile and records no consent. It
