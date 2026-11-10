@@ -115,22 +115,68 @@ function readPosts(items: Array<Record<string, unknown>>): ScrapedPost[] {
   for (const it of items) {
     const shortcode = String(it.shortCode ?? it.shortcode ?? "");
     if (!/^[A-Za-z0-9_-]{5,40}$/.test(shortcode)) continue;
-    const type = String(it.type ?? "");
+    const type = String(it.type ?? it.post_type ?? "");
+    // The fallback actor reports in snake_case and puts the media in an array of slides
+    // rather than in displayUrl/videoUrl. Read the first slide: these pages show one
+    // image per post, and a carousel's first slide is the one Instagram shows too.
+    const slides = Array.isArray(it.media) ? it.media as Array<Record<string, unknown>> : [];
+    const slide = slides[0] ?? {};
+    const slideIsVideo = String(slide.media_type ?? "").toLowerCase().includes("video");
     out.push({
       shortcode,
-      permalink: String(it.url ?? `https://www.instagram.com/p/${shortcode}/`),
+      permalink: String(it.url ?? it.permalink ?? `https://www.instagram.com/p/${shortcode}/`),
       caption: (it.caption as string) ?? null,
-      postedAt: (it.timestamp as string) ?? null,
-      // A video's displayUrl is its cover frame, which becomes the poster.
-      imageUrl: (it.displayUrl as string) ?? (it.imageUrl as string) ?? null,
-      videoUrl: (it.videoUrl as string) ?? null,
-      width: Number(it.dimensionsWidth) || null,
-      height: Number(it.dimensionsHeight) || null,
-      isVideo: type === "Video" || it.isVideo === true,
+      postedAt: (it.timestamp as string) ?? (it.taken_at as string) ?? null,
+      // A video's displayUrl is its cover frame, which becomes the poster. The fallback's
+      // equivalent is cover_url, falling back to media_url for a still.
+      imageUrl: (it.displayUrl as string) ?? (it.imageUrl as string)
+                ?? (slide.cover_url as string)
+                ?? (slideIsVideo ? null : (slide.media_url as string)) ?? null,
+      videoUrl: (it.videoUrl as string) ?? (slideIsVideo ? (slide.media_url as string) : null) ?? null,
+      width: Number(it.dimensionsWidth ?? slide.width) || null,
+      height: Number(it.dimensionsHeight ?? slide.height) || null,
+      isVideo: type === "Video" || type.toLowerCase() === "video" || it.isVideo === true || slideIsVideo,
     });
     if (out.length >= POST_LIMIT) break;
   }
   return out;
+}
+
+/** The request body for one account.
+ *
+ *  The default shape is apify~instagram-scraper's: directUrls plus resultsType. Other
+ *  actors do not take directUrls at all -- intropix~instagram-posts-reels-scraper, the one
+ *  that can read age-restricted accounts, wants `usernames` -- and the username is
+ *  per-account, so it cannot simply be a static extra field in a secret.
+ *
+ *  So an actor may instead declare its whole input as a `__template`, in which the string
+ *  "{{username}}" is replaced wherever it appears. That keeps the knowledge of each actor's
+ *  schema in configuration rather than compiled in here, which matters because the fallback
+ *  provider is the kind of thing that gets swapped.
+ */
+function buildInput(username: string, extraInput: Record<string, unknown>): Record<string, unknown> {
+  const template = extraInput.__template;
+  if (template && typeof template === "object") {
+    const fill = (v: unknown): unknown => {
+      if (typeof v === "string") return v.replace(/\{\{username\}\}/g, username);
+      if (Array.isArray(v)) return v.map(fill);
+      if (v && typeof v === "object") {
+        return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, fill(x)]));
+      }
+      return v;
+    };
+    return fill(template) as Record<string, unknown>;
+  }
+  const rest = { ...extraInput };
+  delete rest.__template;
+  return {
+    directUrls: [`https://www.instagram.com/${username}/`],
+    resultsType: "posts",
+    resultsLimit: POST_LIMIT,
+    addParentData: false,
+    // Session cookies, proxy configuration, and anything else the chosen actor wants.
+    ...rest,
+  };
 }
 
 /** Ask the provider for this account's recent posts. */
@@ -143,17 +189,7 @@ async function fetchPosts(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        directUrls: [`https://www.instagram.com/${username}/`],
-        resultsType: "posts",
-        resultsLimit: POST_LIMIT,
-        addParentData: false,
-        // Session cookies, proxy configuration, and anything else the chosen actor wants.
-        // Age-restricted accounts are unreachable without a logged-in session, so for a
-        // dispensary this is not optional -- but it is the operator's to supply, not ours
-        // to invent.
-        ...extraInput,
-      }),
+      body: JSON.stringify(buildInput(username, extraInput)),
     },
   );
   if (!res.ok) {
