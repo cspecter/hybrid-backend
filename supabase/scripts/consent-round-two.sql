@@ -1,0 +1,59 @@
+-- Round two: consent rows for the 14 remaining brands on the consented list
+-- that match exactly one brand profile and already have a handle.
+--
+-- Round one covered 30. The list in the sheet was always 167 brands; what was
+-- missing was not consent but handles, and the website crawl has since found
+-- these. Every handle below was read from the brand's own website, so each
+-- brand published the link itself -- that is the strongest provenance
+-- available here, and it is why these are safe to record in bulk.
+--
+-- Deliberately NOT here, and why:
+--
+--   HiCOLOR (388)             handle is 'vireohealth', the parent company's
+--                             account. Consenting it would publish Vireo
+--                             Health's corporate feed as HiColor's. Same
+--                             reason it was held out of round one.
+--   The Botanist (2668)       the sheet row is "Botanist (Canopy USA)" but the
+--                             handle is 'thebotanist.oh' -- the Ohio dispensary
+--                             chain. Wrong entity for a NY brand row.
+--   Connected Cannabis (228)  matched more than one profile.
+--   MR. ZIPS (264)            sheet says "Zips!"; matched more than one profile.
+--
+-- The last three are name-matching judgements about which company is which,
+-- which decides whose posts appear on whose page. They need a person.
+INSERT INTO public.instagram_consent
+  (subject_type, subject_id, username, consent_status, consent_source, consent_note, consent_by, source)
+VALUES
+  -- ANIMAL HOUSE
+  ('brand', 5377, $h$animalhouse.ny$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- BONANZA
+  ('brand', 5656, $h$bonanza.canna$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- BREAKFAST CONNECTIONS
+  ('brand', 5660, $h$breakfastconnections$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- CANNABALS
+  ('brand', 5401, $h$cannabalsny$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- Florette
+  ('brand', 3380, $h$florette.ny$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- GOLDEN GARDEN
+  ('brand', 5448, $h$goldengarden_ny$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- Good Tide
+  ('brand', 5450, $h$itsgoodtide$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- High 5's
+  ('brand', 5471, $h$high5ny$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- KOA
+  ('brand', 5794, $h$koa.prerolls$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- Nanticoke
+  ('brand', 5522, $h$nanticoke.2$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- Rec Roots
+  ('brand', 5870, $h$rec.roots$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- Supernaturals
+  ('brand', 5915, $h$supernaturalsny$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- urbanXtracts
+  ('brand', 5944, $h$urbanxtracts$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape'),
+  -- Zizzle
+  ('brand', 5960, $h$zizzle.official$h$, 'granted', 'other', $n$Approval to show six Instagram posts, recorded 2026-11-10 from the operator's own attestation: column H "Consented to scrape?" = Yes in the Google Sheet OverallBrandsAnalytics_11_02_2026_to_11_08_2026 (id withheld: this file is in a public repository; the id is recorded in instagram_consent.consent_note), marked by Aaron Raskin. No per-brand artifact -- no email, signature, date or contact was captured for any individual brand, and the channel of each agreement is unknown. Recorded server-side, not through the app. Revoke deletes the stored posts. Handle taken from the brand's own website by social_discovery, not guessed.$n$, 17, 'scrape')
+ON CONFLICT (subject_type, subject_id) DO NOTHING;
+
+SELECT count(*) AS consent_rows,
+       count(*) FILTER (WHERE status = 'active') AS active
+  FROM public.instagram_consent;
