@@ -1,0 +1,3 @@
+# Output of mint_store_claim_invites.py: live claim tokens, never committed.
+*.sql
+*-claim-links.csv
